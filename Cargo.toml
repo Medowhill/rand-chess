@@ -1,0 +1,8 @@
+[package]
+name = "chess"
+version = "1.0.0"
+authors = ["Jaemin Hong <hjm0901@gmail.com>"]
+edition = "2021"
+
+[dependencies]
+etrace = "1.1.1"
