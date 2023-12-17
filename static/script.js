@@ -104,4 +104,36 @@ document.addEventListener('DOMContentLoaded', function() {
             prevSize = size;
         }
     });
+
+    let socket = null;
+
+    function connect() {
+        disconnect();
+
+        const { location } = window;
+
+        const proto = location.protocol.startsWith('https') ? 'wss' : 'ws';
+        const wsUri = `${proto}://${location.host}/ws`;
+
+        socket = new WebSocket(wsUri);
+        socket.onopen = () => {
+            console.log("connected");
+        };
+        socket.onmessage = (ev) => {
+            console.log(ev.data);
+        };
+        socket.onclose = () => {
+            console.log("disconnected");
+            socket = null;
+        }
+    }
+
+    function disconnect() {
+        if (socket) {
+            socket.close()
+            socket = null
+        }
+    }
+
+    connect();
 });
