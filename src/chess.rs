@@ -621,18 +621,18 @@ impl Board {
         if self.half_moves <= 3 {
             return None;
         }
-        // let p = 0.5 - 1.0 / (0.26 * self.half_moves as f64 + 1.22);
-        // let b = thread_rng().gen_bool(p);
-        // if !b {
-        //     return None;
-        // }
+        let p = 0.5 - 1.0 / (0.26 * self.half_moves as f64 + 1.22);
+        let b = thread_rng().gen_bool(p);
+        if !b {
+            return None;
+        }
         let cands = vec![
-            // self.make_swap(),
-            // self.make_n2b(),
-            // self.make_b2n(),
-            // self.make_r2q(),
-            // self.make_q2r(),
-            // self.make_pawn_run(),
+            self.make_swap(),
+            self.make_n2b(),
+            self.make_b2n(),
+            self.make_r2q(),
+            self.make_q2r(),
+            self.make_pawn_run(),
             self.make_p2q(),
             self.make_q2p(),
             self.make_rotate(),
@@ -800,7 +800,7 @@ impl Board {
             let mut nloc = *l;
             let nloc = loop {
                 let nnloc = nloc + (dx, 0);
-                if !self.is_empty(nnloc) {
+                if nnloc.file < 0 || nnloc.file > 7 || !self.is_empty(nnloc) {
                     break nloc;
                 }
                 nloc = nnloc;
