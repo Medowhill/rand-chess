@@ -1,10 +1,9 @@
+use ::chess::*;
 use actix::*;
 use actix_files::Files;
 use actix_web::*;
 use actix_web_actors::ws;
 use std::time::Instant;
-
-use ::chess::*;
 
 async fn ws_route(
     req: HttpRequest,
@@ -24,7 +23,7 @@ async fn ws_route(
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
-    let server = server::Server::new().start();
+    let server = server::Server::default().start();
     HttpServer::new(move || {
         App::new()
             .app_data(web::Data::new(server.clone()))

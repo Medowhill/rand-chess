@@ -1,8 +1,7 @@
+use crate::*;
 use actix::*;
 use actix_web_actors::ws;
 use std::time::{Duration, Instant};
-
-use crate::*;
 
 const HEARTBEAT_INTERVAL: Duration = Duration::from_secs(5);
 const CLIENT_TIMEOUT: Duration = Duration::from_secs(10);
@@ -59,7 +58,7 @@ impl Handler<server::Message> for WsSession {
     type Result = ();
 
     fn handle(&mut self, msg: server::Message, ctx: &mut Self::Context) {
-        ctx.text(msg.0);
+        ctx.text(serde_json::to_string(&msg).unwrap());
     }
 }
 
@@ -72,7 +71,6 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for WsSession {
             }
             Ok(msg) => msg,
         };
-        println!("{:?}", msg);
         match msg {
             ws::Message::Ping(msg) => {
                 self.hb = Instant::now();
@@ -81,7 +79,10 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for WsSession {
             ws::Message::Pong(_) => {
                 self.hb = Instant::now();
             }
-            ws::Message::Text(_) => {}
+            ws::Message::Text(text) => {
+                let req: server::Request = serde_json::from_str(&text).unwrap();
+                self.addr.do_send(req);
+            }
             ws::Message::Binary(_) => {}
             ws::Message::Close(reason) => {
                 ctx.close(reason);

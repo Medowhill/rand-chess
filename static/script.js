@@ -1,139 +1,173 @@
-document.addEventListener('DOMContentLoaded', function() {
-    const chessboard = document.getElementById('chessboard');
-    const zoomInButton = document.getElementById('zoomIn');
-    const zoomOutButton = document.getElementById('zoomOut');
+document.addEventListener("DOMContentLoaded", () => {
+  const chessboard = document.getElementById("chessboard");
+  const zoomInButton = document.getElementById("zoomIn");
+  const zoomOutButton = document.getElementById("zoomOut");
 
-    let size = 70;
-    let prevSize = size;
+  let size = 70;
+  let message = null;
+  let selected = null;
+  let targets = [];
+  let waiting = true;
 
-    chessboard.style.width = `${8 * size}px`;
-    chessboard.style.height = `${8 * size}px`;
+  zoomInButton.addEventListener('click', () => {
+    size += 10;
+    draw();
+  });
 
-    function addPiece(fileName, x, y) {
-        const piece = document.createElement('div');
-        piece.classList.add('chess-piece');
-        piece.style.backgroundImage = `url('${fileName}')`;
-        piece.style.width = `${size}px`;
-        piece.style.height = `${size}px`;
-        piece.style.left = `${x * size}px`;
-        piece.style.top = `${y * size}px`;
-        chessboard.appendChild(piece);
+  zoomOutButton.addEventListener('click', () => {
+    if (size > 10) {
+      size -= 10;
+      draw();
     }
+  });
 
-    function setupChessboard() {
-        // Clear existing pieces
-        chessboard.innerHTML = '';
-
-        // Place pieces in initial positions
-        // Black pieces
-        for (let i = 0; i < 8; i++) { addPiece('bP.svg', i, 1); } // Pawns
-        addPiece('bR.svg', 0, 0); addPiece('bR.svg', 7, 0); // Rooks
-        addPiece('bN.svg', 1, 0); addPiece('bN.svg', 6, 0); // Knights
-        addPiece('bB.svg', 2, 0); addPiece('bB.svg', 5, 0); // Bishops
-        addPiece('bQ.svg', 3, 0); // Queen
-        addPiece('bK.svg', 4, 0); // King
-
-        // White pieces
-        for (let i = 0; i < 8; i++) { addPiece('wP.svg', i, 6); } // Pawns
-        addPiece('wR.svg', 0, 7); addPiece('wR.svg', 7, 7); // Rooks
-        addPiece('wN.svg', 1, 7); addPiece('wN.svg', 6, 7); // Knights
-        addPiece('wB.svg', 2, 7); addPiece('wB.svg', 5, 7); // Bishops
-        addPiece('wQ.svg', 3, 7); // Queen
-        addPiece('wK.svg', 4, 7); // King
+  function pieceToFile(piece) {
+    let s = piece.color === "White" ? "w" : "b";
+    switch (piece.typ) {
+      case "Pawn": s += "P"; break;
+      case "Knight": s += "N"; break;
+      case "Bishop": s += "B"; break;
+      case "Rook": s += "R"; break;
+      case "Queen": s += "Q"; break;
+      case "King": s += "K"; break;
     }
+    s += ".svg";
+    return s;
+  }
 
-    setupChessboard(); // Initial setup
+  function addPiece(fileName, file, rank) {
+    const piece = document.createElement("div");
+    piece.classList.add("chess-piece");
+    piece.style.backgroundImage = `url('${fileName}')`;
+    piece.style.width = `${size}px`;
+    piece.style.height = `${size}px`;
+    piece.style.left = `${file * size}px`;
+    piece.style.top = `${(7 - rank) * size}px`;
+    chessboard.appendChild(piece);
+  }
 
-    let overlay = document.createElement('div');
+  function addOverlay(r, g, b, file, rank) {
+    const overlay = document.createElement('div');
     overlay.style.position = 'absolute';
     overlay.style.width = `${size}px`;
     overlay.style.height = `${size}px`;
-    overlay.style.backgroundColor = 'rgba(0, 0, 0, 0.2)'; // Semi-transparent black
-    overlay.style.display = 'none';
+    overlay.style.left = `${file * size}px`;
+    overlay.style.top = `${(7 - rank) * size}px`;
+    overlay.style.backgroundColor = `rgba(${r}, ${g}, ${b}, 0.2)`;
+    overlay.style.display = 'block';
     chessboard.appendChild(overlay);
+  }
 
-    function getChessboardPosition(event) {
-        const bounds = chessboard.getBoundingClientRect();
-        const x = event.clientX - bounds.left;
-        const y = event.clientY - bounds.top;
-        const rank = Math.floor(y / size);
-        const file = Math.floor(x / size);
-        return { rank, file };
-    }
+  function draw() {
+    chessboard.style.width = `${8 * size}px`;
+    chessboard.style.height = `${8 * size}px`;
+    chessboard.innerHTML = "";
 
-    chessboard.addEventListener('click', function(event) {
-        const position = getChessboardPosition(event);
-
-        overlay.style.left = `${position.file * size}px`;
-        overlay.style.top = `${position.rank * size}px`;
-        overlay.style.display = 'block';
-    });
-
-    function adjustOverlay() {
-        overlay.style.width = `${size}px`;
-        overlay.style.height = `${size}px`;
-        overlay.style.left = `${parseInt(overlay.style.left) / prevSize * size}px`;
-        overlay.style.top = `${parseInt(overlay.style.top) / prevSize * size}px`;
-    }
-
-    function adjustPieces() {
-        document.querySelectorAll('.chess-piece').forEach(piece => {
-            piece.style.width = `${size}px`;
-            piece.style.height = `${size}px`;
-            piece.style.left = `${parseInt(piece.style.left) / prevSize * size}px`;
-            piece.style.top = `${parseInt(piece.style.top) / prevSize * size}px`;
-        });
-    }
-
-    zoomInButton.addEventListener('click', function() {
-        size += 10;
-        chessboard.style.width = `${size * 8}px`;
-        chessboard.style.height = `${size * 8}px`;
-        adjustPieces();
-        adjustOverlay();
-        prevSize = size;
-    });
-
-    zoomOutButton.addEventListener('click', function() {
-        if (size > 10) {
-            size -= 10;
-            chessboard.style.width = `${size * 8}px`;
-            chessboard.style.height = `${size * 8}px`;
-            adjustPieces();
-            adjustOverlay();
-            prevSize = size;
+    if (message) {
+      for (let rank = 0; rank < 8; rank++) {
+        for (let file = 0; file < 8; file++) {
+          const piece = message.pieces[rank][file];
+          if (piece)
+            addPiece(pieceToFile(piece), file, rank);
         }
-    });
-
-    let socket = null;
-
-    function connect() {
-        disconnect();
-
-        const { location } = window;
-
-        const proto = location.protocol.startsWith('https') ? 'wss' : 'ws';
-        const wsUri = `${proto}://${location.host}/ws`;
-
-        socket = new WebSocket(wsUri);
-        socket.onopen = () => {
-            console.log("connected");
-        };
-        socket.onmessage = (ev) => {
-            console.log(ev.data);
-        };
-        socket.onclose = () => {
-            console.log("disconnected");
-            socket = null;
-        }
+      }
     }
-
-    function disconnect() {
-        if (socket) {
-            socket.close()
-            socket = null
+    
+    if (selected) {
+      addOverlay(0, 0, 0, selected.file, selected.rank);
+      if (message) {
+        for (const [loc, moves] of message.moves) {
+          if (loc.file === selected.file && loc.rank === selected.rank) {
+            targets = moves;
+            for (const mv of targets) {
+              addOverlay(255, 255, 0, mv.to.file, mv.to.rank);
+            }
+          }
         }
+      }
     }
+  }
 
-    connect();
+  function getChessboardPosition(event) {
+    const bounds = chessboard.getBoundingClientRect();
+    const x = event.clientX - bounds.left;
+    const y = event.clientY - bounds.top;
+    const rank = 7 - Math.floor(y / size);
+    const file = Math.floor(x / size);
+    return { rank, file };
+  }
+
+  function samePos(pos1, pos2) {
+    return pos1.file === pos2.file && pos1.rank === pos2.rank;
+  }
+
+  chessboard.addEventListener('click', event => {
+    if (waiting)
+      return;
+    const pos = getChessboardPosition(event);
+    if (selected) {
+      if (samePos(pos, selected)) {
+        selected = null;
+      } else {
+        let move = false;
+        for (const mv of targets) {
+          if (samePos(pos, mv.to)) {
+            selected = null;
+            targets = [];
+            move = true;
+            if (socket) {
+              socket.send(JSON.stringify({ "Move": mv }));
+              waiting = true;
+            }
+          }
+        }
+        if (!move)
+          selected = pos;
+      }
+    } else {
+      selected = pos;
+    }
+    draw();
+  });
+
+  let socket = null;
+
+  function connect() {
+    disconnect();
+
+    const { location } = window;
+
+    const proto = location.protocol.startsWith('https') ? 'wss' : 'ws';
+    const wsUri = `${proto}://${location.host}/ws`;
+
+    socket = new WebSocket(wsUri);
+    socket.onopen = () => {
+      console.log("connected");
+    };
+    socket.onmessage = (ev) => {
+      message = JSON.parse(ev.data);
+      waiting = false;
+      draw();
+    };
+    socket.onclose = () => {
+      console.log("disconnected");
+      onclose();
+    }
+  }
+
+  function onclose() {
+    socket = null
+    message = null;
+    waiting = true;
+    draw();
+  }
+
+  function disconnect() {
+    if (socket) {
+      socket.close()
+      onclose();
+    }
+  }
+
+  connect();
 });

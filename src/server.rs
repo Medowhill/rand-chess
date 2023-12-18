@@ -1,10 +1,15 @@
+use crate::*;
+use actix::*;
+use chess::*;
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
-use actix::*;
-
-#[derive(Message)]
+#[derive(Message, Serialize, Deserialize)]
 #[rtype(result = "()")]
-pub struct Message(pub String);
+pub struct Message {
+    pieces: [[Option<Piece>; 8]; 8],
+    moves: Vec<(Location, Vec<Move>)>,
+}
 
 #[derive(Message)]
 #[rtype(usize)]
@@ -18,19 +23,18 @@ pub struct Disconnect {
     pub id: usize,
 }
 
-#[derive(Debug)]
-pub struct Server {
-    sessions: HashMap<usize, Recipient<Message>>,
-    id: usize,
+#[derive(Message, Serialize, Deserialize)]
+#[rtype(result = "()")]
+pub enum Request {
+    Move(Move),
+    Restart,
 }
 
-impl Server {
-    pub fn new() -> Self {
-        Self {
-            sessions: HashMap::new(),
-            id: 0,
-        }
-    }
+#[derive(Debug, Default)]
+pub struct Server {
+    sessions: HashMap<usize, Recipient<Message>>,
+    board: Board,
+    id: usize,
 }
 
 impl Actor for Server {
@@ -42,6 +46,10 @@ impl Handler<Connect> for Server {
 
     fn handle(&mut self, msg: Connect, _: &mut Context<Self>) -> Self::Result {
         println!("connected");
+        msg.addr.do_send(Message {
+            pieces: self.board.pieces,
+            moves: self.board.all_possible_moves(),
+        });
         let id = self.id;
         self.id += 1;
         self.sessions.insert(id, msg.addr);
@@ -55,5 +63,24 @@ impl Handler<Disconnect> for Server {
     fn handle(&mut self, msg: Disconnect, _: &mut Context<Self>) {
         println!("disconnected");
         self.sessions.remove(&msg.id);
+    }
+}
+
+impl Handler<Request> for Server {
+    type Result = ();
+
+    fn handle(&mut self, msg: Request, _: &mut Context<Self>) {
+        match msg {
+            Request::Move(mv) => {
+                self.board.move_piece(&mv);
+                for addr in self.sessions.values() {
+                    addr.do_send(Message {
+                        pieces: self.board.pieces,
+                        moves: self.board.all_possible_moves(),
+                    });
+                }
+            }
+            Request::Restart => {}
+        }
     }
 }

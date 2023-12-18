@@ -1,6 +1,6 @@
-use std::collections::{HashMap, HashSet};
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Deserialize, Serialize)]
 enum PieceType {
     Pawn,
     Knight,
@@ -10,7 +10,7 @@ enum PieceType {
     King,
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Deserialize, Serialize)]
 enum Color {
     White,
     Black,
@@ -36,15 +36,10 @@ impl Color {
     fn is_white(self) -> bool {
         self == Color::White
     }
-
-    #[inline]
-    fn is_black(self) -> bool {
-        self == Color::Black
-    }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
-struct Piece {
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Deserialize, Serialize)]
+pub struct Piece {
     typ: PieceType,
     color: Color,
 }
@@ -75,10 +70,10 @@ impl Piece {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-struct Location {
-    rank: i8,
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Deserialize, Serialize)]
+pub struct Location {
     file: i8,
+    rank: i8,
 }
 
 impl std::fmt::Display for Location {
@@ -93,7 +88,7 @@ impl std::ops::Add<(i8, i8)> for Location {
     type Output = Self;
 
     fn add(self, x: (i8, i8)) -> Self::Output {
-        Self::new(self.rank + x.0, self.file + x.1)
+        Self::new(self.file + x.0, self.rank + x.1)
     }
 }
 
@@ -101,20 +96,20 @@ impl std::ops::Add<&(i8, i8)> for Location {
     type Output = Self;
 
     fn add(self, x: &(i8, i8)) -> Self::Output {
-        Self::new(self.rank + x.0, self.file + x.1)
+        Self::new(self.file + x.0, self.rank + x.1)
     }
 }
 
 impl Location {
     #[inline]
-    const fn new(rank: i8, file: i8) -> Self {
-        Self { rank, file }
+    const fn new(file: i8, rank: i8) -> Self {
+        Self { file, rank }
     }
 
     #[inline]
     fn is_valid(self) -> bool {
         let range = 0..8;
-        range.contains(&self.rank) && range.contains(&self.file)
+        range.contains(&self.file) && range.contains(&self.rank)
     }
 }
 
@@ -126,8 +121,8 @@ enum LocationState {
     Friendly,
 }
 
-#[derive(Debug)]
-struct Move {
+#[derive(Debug, Deserialize, Serialize)]
+pub struct Move {
     piece: Piece,
     from: Location,
     to: Location,
@@ -157,16 +152,11 @@ impl Move {
         self.castle = Some((rook_from, rook_to));
         self
     }
-
-    fn with_promotion(mut self, typ: PieceType) -> Self {
-        self.promotion = Some(typ);
-        self
-    }
 }
 
-#[derive(Debug, Clone)]
-struct Board {
-    pieces: [[Option<Piece>; 8]; 8],
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct Board {
+    pub pieces: [[Option<Piece>; 8]; 8],
     active: Color,
     wk_castle: bool,
     wq_castle: bool,
@@ -212,8 +202,9 @@ impl std::fmt::Display for Board {
     }
 }
 
-impl Board {
-    fn new() -> Self {
+impl Default for Board {
+    #[inline]
+    fn default() -> Self {
         Self {
             pieces: INIT_PIECES,
             active: Color::White,
@@ -224,11 +215,13 @@ impl Board {
             en_passant: None,
         }
     }
+}
 
+impl Board {
     fn iter_locations(&self) -> impl Iterator<Item = (Location, Option<&Piece>)> {
         self.pieces.iter().enumerate().flat_map(|(rank, pieces)| {
-            pieces.iter().enumerate().map(move |(pile, piece)| {
-                let loc = Location::new(rank as i8, pile as i8);
+            pieces.iter().enumerate().map(move |(file, piece)| {
+                let loc = Location::new(file as i8, rank as i8);
                 (loc, piece.as_ref())
             })
         })
@@ -284,20 +277,9 @@ impl Board {
         false
     }
 
-    fn reachable_locations(&self, color: Color) -> HashSet<Location> {
-        let mut locs = HashSet::new();
-        for (loc, piece) in self.iter_pieces_of(color) {
-            let moves = self.possible_moves(loc, *piece, false);
-            for mv in moves {
-                locs.insert(mv.to);
-            }
-        }
-        locs
-    }
-
-    fn all_possible_moves(&self, color: Color, safe: bool) -> HashMap<Location, Vec<Move>> {
-        self.iter_pieces_of(color)
-            .map(|(loc, piece)| (loc, self.possible_moves(loc, *piece, safe)))
+    pub fn all_possible_moves(&self) -> Vec<(Location, Vec<Move>)> {
+        self.iter_pieces_of(self.active)
+            .map(|(loc, piece)| (loc, self.possible_moves(loc, *piece, true)))
             .collect()
     }
 
@@ -359,7 +341,8 @@ impl Board {
                 self.moves_to_directions(loc, piece, &dirs, true)
             }
             PieceType::King => {
-                let dirs = all_directions(1, 1);
+                let mut dirs = all_directions(1, 1);
+                dirs.extend(all_directions(1, 0));
                 let mut moves = self.moves_to_directions(loc, piece, &dirs, false);
                 let kingside = if color.is_white() {
                     self.wk_castle
@@ -367,11 +350,11 @@ impl Board {
                     self.bk_castle
                 };
                 if kingside
-                    && self.get_state(loc + (0, 1), color) == LocationState::Empty
-                    && self.get_state(loc + (0, 2), color) == LocationState::Empty
+                    && self.get_state(loc + (1, 0), color) == LocationState::Empty
+                    && self.get_state(loc + (2, 0), color) == LocationState::Empty
                 {
                     moves.push(
-                        Move::new(piece, loc, loc + (0, 2)).with_castle(loc + (0, 3), loc + (0, 1)),
+                        Move::new(piece, loc, loc + (2, 0)).with_castle(loc + (3, 0), loc + (1, 0)),
                     );
                 }
                 let queenside = if color.is_white() {
@@ -380,12 +363,12 @@ impl Board {
                     self.bq_castle
                 };
                 if queenside
-                    && self.get_state(loc + (0, -1), color) == LocationState::Empty
-                    && self.get_state(loc + (0, -2), color) == LocationState::Empty
+                    && self.get_state(loc + (-1, 0), color) == LocationState::Empty
+                    && self.get_state(loc + (-2, 0), color) == LocationState::Empty
                 {
                     moves.push(
-                        Move::new(piece, loc, loc + (0, -2))
-                            .with_castle(loc + (0, -4), loc + (0, -1)),
+                        Move::new(piece, loc, loc + (-2, 0))
+                            .with_castle(loc + (-4, 0), loc + (-1, 0)),
                     );
                 }
                 moves
@@ -399,12 +382,13 @@ impl Board {
                     return false;
                 }
                 if mv.castle.is_some() {
-                    let reachables = self.reachable_locations(opponent);
-                    if reachables.contains(&mv.from) {
+                    if self.can_attack_king(opponent) {
                         return false;
                     }
                     let dx = mv.to.file - mv.from.file;
-                    if reachables.contains(&(mv.from + (0, dx / 2))) {
+                    let middle_mv = Move::new(mv.piece, mv.from, mv.from + (dx / 2, 0));
+                    let new_board = self.piece_moved(&middle_mv);
+                    if new_board.can_attack_king(opponent) {
                         return false;
                     }
                 }
@@ -426,7 +410,7 @@ impl Board {
             let mut nloc = loc;
             loop {
                 nloc = nloc + dir;
-                match self.get_state(loc, piece.color) {
+                match self.get_state(nloc, piece.color) {
                     LocationState::Empty => {
                         moves.push(Move::new(piece, loc, nloc));
                     }
@@ -491,41 +475,51 @@ impl Board {
             }
             _ => {}
         }
+        if let Some((loc, _)) = mv.attack {
+            match (loc.file, loc.rank) {
+                (0, 0) => new_board.wq_castle = false,
+                (7, 0) => new_board.wk_castle = false,
+                (0, 7) => new_board.bq_castle = false,
+                (7, 7) => new_board.bk_castle = false,
+                _ => {}
+            }
+        }
         if let Some(typ) = mv.promotion {
             piece.typ = typ;
         }
         new_board.set_piece(mv.to, Some(piece));
+        new_board.active = new_board.active.other();
         new_board
     }
 
-    fn move_piece(&mut self, mv: &Move) {
+    pub fn move_piece(&mut self, mv: &Move) {
         *self = self.piece_moved(mv);
     }
 }
 
-fn all_directions(dx: i8, dy: i8) -> Vec<(i8, i8)> {
+fn all_directions(dfile: i8, drank: i8) -> Vec<(i8, i8)> {
     let mut dirs = vec![];
-    let swap = dx != dy;
-    dirs.push((dx, dy));
+    let swap = dfile != drank;
+    dirs.push((dfile, drank));
     if swap {
-        dirs.push((dy, dx));
+        dirs.push((drank, dfile));
     }
-    if dx != 0 {
-        dirs.push((-dx, dy));
+    if dfile != 0 {
+        dirs.push((-dfile, drank));
         if swap {
-            dirs.push((dy, -dx));
+            dirs.push((drank, -dfile));
         }
     }
-    if dy != 0 {
-        dirs.push((dx, -dy));
+    if drank != 0 {
+        dirs.push((dfile, -drank));
         if swap {
-            dirs.push((dy, dx));
+            dirs.push((-drank, dfile));
         }
     }
-    if dx != 0 && dy != 0 {
-        dirs.push((-dx, -dy));
+    if dfile != 0 && drank != 0 {
+        dirs.push((-dfile, -drank));
         if swap {
-            dirs.push((-dy, -dx));
+            dirs.push((-drank, -dfile));
         }
     }
     dirs
@@ -559,8 +553,3 @@ const INIT_PIECES: [[Option<Piece>; 8]; 8] = [
         Some(Piece::new(PieceType::Rook, Color::Black)),
     ],
 ];
-
-pub fn run() {
-    let game = Board::new();
-    println!("{}", game);
-}
