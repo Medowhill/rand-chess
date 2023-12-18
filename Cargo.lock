@@ -425,6 +425,7 @@ dependencies = [
  "actix-web",
  "actix-web-actors",
  "etrace",
+ "rand",
  "serde",
  "serde_json",
 ]

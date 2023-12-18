@@ -9,7 +9,12 @@ document.addEventListener("DOMContentLoaded", () => {
   const bishopButton = document.getElementById("bishop");
   const knightButton = document.getElementById("knight");
   const resultText = document.getElementById("result");
+  const titleText = document.getElementById("title");
+  const descText = document.getElementById("description");
   promotions.style.display = "none";
+  resultText.innerText = "";
+  titleText.innerText = "";
+  descText.innerText = "";
 
   let size = 70;
   let message = null;
@@ -119,6 +124,8 @@ document.addEventListener("DOMContentLoaded", () => {
     chessboard.style.height = `${8 * size}px`;
     chessboard.innerHTML = "";
     resultText.innerText = "";
+    titleText.innerText = "";
+    descText.innerText = "";
 
     if (message) {
       for (let rank = 0; rank < 8; rank++) {
@@ -140,6 +147,44 @@ document.addEventListener("DOMContentLoaded", () => {
         addOverlay(255, 255, 0, 0.2, from.file, from.rank);
         const to = message.last.to;
         addOverlay(255, 255, 0, 0.2, to.file, to.rank);
+      }
+
+      if (message.last_event) {
+        if (message.last_event.Swap) {
+          const ev = message.last_event.Swap;
+          addOverlay(255, 0, 0, 0.2, ev[0].file, ev[0].rank);
+          addOverlay(255, 0, 0, 0.2, ev[1].file, ev[1].rank);
+          titleText.innerText = "교대";
+          descText.innerText = "킹이 아닌 두 기물의 위치가 바뀌었습니다.";
+        } else if (message.last_event.KnightToBishop) {
+          const ev = message.last_event.KnightToBishop;
+          addOverlay(255, 0, 0, 0.2, ev.file, ev.rank);
+          titleText.innerText = "말에서 내리기";
+          descText.innerText = "나이트가 비숍이 되었습니다.";
+        } else if (message.last_event.BishopToKnight) {
+          const ev = message.last_event.BishopToKnight;
+          addOverlay(255, 0, 0, 0.2, ev.file, ev.rank);
+          titleText.innerText = "말에 타기";
+          descText.innerText = "비숍이 나이트가 되었습니다.";
+        } else if (message.last_event.RooksToQueen) {
+          const ev = message.last_event.RooksToQueen;
+          addOverlay(255, 0, 0, 0.2, ev[0].file, ev[0].rank);
+          addOverlay(255, 0, 0, 0.2, ev[1].file, ev[1].rank);
+          titleText.innerText = "융합";
+          descText.innerText = "룩 두 개가 퀸이 되었습니다.";
+        } else if (message.last_event.QueenToRooks) {
+          const ev = message.last_event.QueenToRooks;
+          addOverlay(255, 0, 0, 0.2, ev[0].file, ev[0].rank);
+          addOverlay(255, 0, 0, 0.2, ev[1].file, ev[1].rank);
+          titleText.innerText = "분열";
+          descText.innerText = "퀸이 룩 두 개가 되었습니다.";
+        } else if (message.last_event.PawnRun) {
+          const ev = message.last_event.PawnRun;
+          addOverlay(255, 0, 0, 0.2, ev[0].file, ev[0].rank);
+          addOverlay(255, 0, 0, 0.2, ev[1].file, ev[1].rank);
+          titleText.innerText = "전력질주";
+          descText.innerText = "폰이 앞으로 달려나갔습니다.";
+        }
       }
     }
     
@@ -233,7 +278,7 @@ document.addEventListener("DOMContentLoaded", () => {
     socket.onclose = () => {
       console.log("disconnected");
       onclose();
-    }
+    };
   }
 
   function onclose() {

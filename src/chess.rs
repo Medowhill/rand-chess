@@ -1,3 +1,4 @@
+use rand::{seq::SliceRandom, *};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Deserialize, Serialize)]
@@ -67,6 +68,36 @@ impl Piece {
     #[inline]
     const fn new(typ: PieceType, color: Color) -> Self {
         Self { typ, color }
+    }
+
+    #[inline]
+    fn is_pawn(self) -> bool {
+        self.typ == PieceType::Pawn
+    }
+
+    #[inline]
+    fn is_knight(self) -> bool {
+        self.typ == PieceType::Knight
+    }
+
+    #[inline]
+    fn is_bishop(self) -> bool {
+        self.typ == PieceType::Bishop
+    }
+
+    #[inline]
+    fn is_rook(self) -> bool {
+        self.typ == PieceType::Rook
+    }
+
+    #[inline]
+    fn is_queen(self) -> bool {
+        self.typ == PieceType::Queen
+    }
+
+    #[inline]
+    fn is_king(self) -> bool {
+        self.typ == PieceType::King
     }
 }
 
@@ -163,7 +194,17 @@ pub enum GameState {
     Stalemate,
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Copy, Deserialize, Serialize)]
+pub enum Event {
+    Swap(Location, Location),
+    KnightToBishop(Location),
+    BishopToKnight(Location),
+    RooksToQueen(Location, Location),
+    QueenToRooks(Location, Location),
+    PawnRun(Location, Location),
+}
+
+#[derive(Debug, Clone)]
 pub struct Board {
     pub pieces: [[Option<Piece>; 8]; 8],
     pub active: Color,
@@ -172,7 +213,9 @@ pub struct Board {
     bk_castle: bool,
     bq_castle: bool,
     en_passant: Option<Location>,
-    pub last: Option<Move>,
+    half_moves: usize,
+    pub last_move: Option<Move>,
+    pub last_event: Option<Event>,
 }
 
 impl std::fmt::Display for Board {
@@ -223,7 +266,9 @@ impl Default for Board {
             bk_castle: true,
             bq_castle: true,
             en_passant: None,
-            last: None,
+            half_moves: 0,
+            last_move: None,
+            last_event: None,
         }
     }
 }
@@ -238,6 +283,10 @@ impl Board {
         })
     }
 
+    fn iter_empty_locations(&self) -> impl Iterator<Item = (Location, Option<&Piece>)> {
+        self.iter_locations().filter(|(_, piece)| piece.is_none())
+    }
+
     fn iter_pieces(&self) -> impl Iterator<Item = (Location, &Piece)> {
         self.iter_locations().filter_map(|(loc, piece)| {
             let piece = piece?;
@@ -250,8 +299,16 @@ impl Board {
             .filter(move |(_, piece)| piece.color == color)
     }
 
+    fn iter_active_pieces(&self) -> impl Iterator<Item = (Location, &Piece)> {
+        self.iter_pieces_of(self.active)
+    }
+
     fn piece(&self, loc: Location) -> Option<Piece> {
         self.pieces[loc.rank as usize][loc.file as usize]
+    }
+
+    fn is_empty(&self, loc: Location) -> bool {
+        self.piece(loc).is_none()
     }
 
     fn set_piece(&mut self, loc: Location, piece: Option<Piece>) {
@@ -459,7 +516,25 @@ impl Board {
         moves
     }
 
-    fn piece_moved(&self, mv: &Move) -> Board {
+    fn update_castle(&mut self, loc: Location, color: Color) {
+        if color.is_white() {
+            if loc.rank == 0 {
+                if loc.file == 0 {
+                    self.wq_castle = false;
+                } else if loc.file == 7 {
+                    self.wk_castle = false;
+                }
+            }
+        } else if loc.rank == 7 {
+            if loc.file == 0 {
+                self.bq_castle = false;
+            } else if loc.file == 7 {
+                self.bk_castle = false;
+            }
+        }
+    }
+
+    fn piece_moved(&self, mv: &Move) -> Self {
         let mut new_board = self.clone();
         new_board.en_passant = None;
         if let Some((loc, _)) = mv.attack {
@@ -479,21 +554,7 @@ impl Board {
                 }
             }
             PieceType::Rook => {
-                if piece.color.is_white() {
-                    if mv.from.rank == 0 {
-                        if mv.from.file == 0 {
-                            new_board.wq_castle = false;
-                        } else if mv.from.file == 7 {
-                            new_board.wk_castle = false;
-                        }
-                    }
-                } else if mv.from.rank == 7 {
-                    if mv.from.file == 0 {
-                        new_board.bq_castle = false;
-                    } else if mv.from.file == 7 {
-                        new_board.bk_castle = false;
-                    }
-                }
+                new_board.update_castle(mv.from, piece.color);
             }
             PieceType::King => {
                 if piece.color.is_white() {
@@ -506,26 +567,191 @@ impl Board {
             }
             _ => {}
         }
-        if let Some((loc, _)) = mv.attack {
-            match (loc.file, loc.rank) {
-                (0, 0) => new_board.wq_castle = false,
-                (7, 0) => new_board.wk_castle = false,
-                (0, 7) => new_board.bq_castle = false,
-                (7, 7) => new_board.bk_castle = false,
-                _ => {}
-            }
+        if let Some((loc, attacked)) = mv.attack {
+            new_board.update_castle(loc, attacked.color);
         }
         if let Some(typ) = mv.promote_to {
             piece.typ = typ;
         }
         new_board.set_piece(mv.to, Some(piece));
-        new_board.last = Some(mv.clone());
+        new_board.last_move = Some(mv.clone());
         new_board.active = new_board.active.other();
+        new_board.half_moves += 1;
         new_board
     }
 
     pub fn move_piece(&mut self, mv: &Move) {
         *self = self.piece_moved(mv);
+    }
+
+    fn final_rank(&self) -> i8 {
+        if self.active.is_white() {
+            7
+        } else {
+            0
+        }
+    }
+
+    pub fn make_random_event(&self) -> Option<Event> {
+        if self.half_moves < 2 {
+            return None;
+        }
+        let cands = vec![
+            self.make_swap(),
+            self.make_n2b(),
+            self.make_b2n(),
+            self.make_r2q(),
+            self.make_q2r(),
+            self.make_pawn_run(),
+        ];
+        let mut cands: Vec<_> = cands.into_iter().flatten().collect();
+        cands.shuffle(&mut thread_rng());
+        cands.into_iter().next()
+    }
+
+    fn gen_events<F: FnOnce(&[(Location, &Piece)], &mut Vec<Event>)>(&self, f: F) -> Option<Event> {
+        let pieces: Vec<_> = self.iter_active_pieces().collect();
+        let mut cands = vec![];
+        f(&pieces, &mut cands);
+        cands.retain(|e| self.is_valid_event(*e));
+        cands.shuffle(&mut thread_rng());
+        cands.into_iter().next()
+    }
+
+    fn make_swap(&self) -> Option<Event> {
+        self.gen_events(|pieces, cands| {
+            for (i, (l1, p1)) in pieces.iter().enumerate() {
+                for (l2, p2) in pieces.iter().take(i) {
+                    if p1.typ == p2.typ || p1.is_king() || p2.is_king() {
+                        continue;
+                    }
+                    if p1.is_pawn() && l2.rank == self.final_rank() {
+                        continue;
+                    }
+                    if p2.is_pawn() && l1.rank == self.final_rank() {
+                        continue;
+                    }
+                    cands.push(Event::Swap(*l1, *l2));
+                }
+            }
+        })
+    }
+
+    fn make_n2b(&self) -> Option<Event> {
+        self.gen_events(|pieces, cands| {
+            for (l, _) in pieces.iter().filter(|(_, p)| p.is_knight()) {
+                cands.push(Event::KnightToBishop(*l));
+            }
+        })
+    }
+
+    fn make_b2n(&self) -> Option<Event> {
+        self.gen_events(|pieces, cands| {
+            for (l, _) in pieces.iter().filter(|(_, p)| p.is_bishop()) {
+                cands.push(Event::BishopToKnight(*l));
+            }
+        })
+    }
+
+    fn make_r2q(&self) -> Option<Event> {
+        self.gen_events(|pieces, cands| {
+            let rooks: Vec<_> = pieces.iter().filter(|(_, p)| p.is_rook()).collect();
+            for (l1, _) in rooks.iter() {
+                for (l2, _) in rooks.iter() {
+                    if l1 != l2 {
+                        cands.push(Event::RooksToQueen(*l1, *l2));
+                    }
+                }
+            }
+        })
+    }
+
+    fn make_q2r(&self) -> Option<Event> {
+        self.gen_events(|pieces, cands| {
+            let emptys: Vec<_> = self.iter_empty_locations().collect();
+            for (l1, _) in pieces.iter().filter(|(_, p)| p.is_queen()) {
+                for (l2, _) in emptys.iter() {
+                    cands.push(Event::QueenToRooks(*l1, *l2));
+                }
+            }
+        })
+    }
+
+    fn make_pawn_run(&self) -> Option<Event> {
+        self.gen_events(|pieces, cands| {
+            let dy = if self.active.is_white() { 1 } else { -1 };
+            for (l, _) in pieces.iter().filter(|(_, p)| p.is_pawn()) {
+                let mut nloc = *l;
+                let nloc = loop {
+                    let nnloc = nloc + (0, dy);
+                    if !self.is_empty(nnloc) || nnloc.rank == self.final_rank() {
+                        break nloc;
+                    }
+                    nloc = nnloc;
+                };
+                if *l != nloc {
+                    cands.push(Event::PawnRun(*l, nloc));
+                }
+            }
+        })
+    }
+
+    fn is_valid_event(&self, event: Event) -> bool {
+        let board = self.event_applied(event);
+        !board.can_attack_king(board.active) && !board.all_possible_moves().is_empty()
+    }
+
+    fn event_applied(&self, event: Event) -> Self {
+        let mut new_board = self.clone();
+        match event {
+            Event::Swap(l1, l2) => {
+                let p1 = self.piece(l1);
+                new_board.set_piece(l1, self.piece(l2));
+                new_board.set_piece(l2, p1);
+                new_board.update_castle(l1, new_board.active);
+                new_board.update_castle(l2, new_board.active);
+            }
+            Event::KnightToBishop(l) => {
+                let mut piece = self.piece(l).unwrap();
+                piece.typ = PieceType::Bishop;
+                new_board.set_piece(l, Some(piece));
+            }
+            Event::BishopToKnight(l) => {
+                let mut piece = self.piece(l).unwrap();
+                piece.typ = PieceType::Knight;
+                new_board.set_piece(l, Some(piece));
+            }
+            Event::RooksToQueen(l1, l2) => {
+                let mut piece = self.piece(l1).unwrap();
+                piece.typ = PieceType::Queen;
+                new_board.set_piece(l1, Some(piece));
+                new_board.set_piece(l2, None);
+                if new_board.active.is_white() {
+                    new_board.wq_castle = false;
+                    new_board.wk_castle = false;
+                } else {
+                    new_board.bq_castle = false;
+                    new_board.bk_castle = false;
+                }
+            }
+            Event::QueenToRooks(l1, l2) => {
+                let mut piece = self.piece(l1).unwrap();
+                piece.typ = PieceType::Rook;
+                new_board.set_piece(l1, Some(piece));
+                new_board.set_piece(l2, Some(piece));
+            }
+            Event::PawnRun(l1, l2) => {
+                let piece = self.piece(l1).unwrap();
+                new_board.set_piece(l1, None);
+                new_board.set_piece(l2, Some(piece));
+            }
+        }
+        new_board.last_event = Some(event);
+        new_board
+    }
+
+    pub fn apply_event(&mut self, event: Event) {
+        *self = self.event_applied(event);
     }
 }
 
