@@ -204,6 +204,8 @@ pub enum Event {
     PawnRun(Location, Location),
     PawnsToQueen([Location; 8]),
     QueenToPawns(Location, i8),
+    Rotate(Location, Location),
+    KingMove(Location, Location),
 }
 
 #[derive(Debug, Clone)]
@@ -619,20 +621,22 @@ impl Board {
         if self.half_moves <= 3 {
             return None;
         }
-        let p = 0.5 - 1.0 / (0.26 * self.half_moves as f64 + 1.22);
-        let b = thread_rng().gen_bool(p);
-        if !b {
-            return None;
-        }
+        // let p = 0.5 - 1.0 / (0.26 * self.half_moves as f64 + 1.22);
+        // let b = thread_rng().gen_bool(p);
+        // if !b {
+        //     return None;
+        // }
         let cands = vec![
-            self.make_swap(),
-            self.make_n2b(),
-            self.make_b2n(),
-            self.make_r2q(),
-            self.make_q2r(),
-            self.make_pawn_run(),
+            // self.make_swap(),
+            // self.make_n2b(),
+            // self.make_b2n(),
+            // self.make_r2q(),
+            // self.make_q2r(),
+            // self.make_pawn_run(),
             self.make_p2q(),
             self.make_q2p(),
+            self.make_rotate(),
+            self.make_king_move(),
         ];
         let mut cands: Vec<_> = cands.into_iter().flatten().collect();
         cands.shuffle(&mut thread_rng());
@@ -767,6 +771,46 @@ impl Board {
         })
     }
 
+    fn make_rotate(&self) -> Option<Event> {
+        self.gen_events(|pieces, cands| {
+            for (l, _) in pieces.iter() {
+                match l.file {
+                    0 => {
+                        let loc = Location::new(7, l.rank);
+                        if self.is_empty(loc) {
+                            cands.push(Event::Rotate(*l, loc));
+                        }
+                    }
+                    7 => {
+                        let loc = Location::new(0, l.rank);
+                        if self.is_empty(loc) {
+                            cands.push(Event::Rotate(*l, loc));
+                        }
+                    }
+                    _ => {}
+                }
+            }
+        })
+    }
+
+    fn make_king_move(&self) -> Option<Event> {
+        self.gen_events(|pieces, cands| {
+            let (l, _) = pieces.iter().find(|(_, p)| p.is_king()).unwrap();
+            let dx = if l.file < 4 { 1 } else { -1 };
+            let mut nloc = *l;
+            let nloc = loop {
+                let nnloc = nloc + (dx, 0);
+                if !self.is_empty(nnloc) {
+                    break nloc;
+                }
+                nloc = nnloc;
+            };
+            if *l != nloc {
+                cands.push(Event::KingMove(*l, nloc));
+            }
+        })
+    }
+
     fn is_valid_event(&self, event: Event) -> bool {
         let board = self.event_applied(event);
         !board.can_attack_king(board.active) && !board.all_possible_moves().is_empty()
@@ -831,6 +875,24 @@ impl Board {
                 for i in 0..8 {
                     let loc = Location::new(i as _, rank);
                     new_board.set_piece(loc, Some(piece));
+                }
+            }
+            Event::Rotate(l1, l2) => {
+                let piece = self.piece(l1).unwrap();
+                new_board.set_piece(l1, None);
+                new_board.set_piece(l2, Some(piece));
+                new_board.update_castle(l1, new_board.active);
+            }
+            Event::KingMove(l1, l2) => {
+                let piece = self.piece(l1).unwrap();
+                new_board.set_piece(l1, None);
+                new_board.set_piece(l2, Some(piece));
+                if new_board.active.is_white() {
+                    new_board.wk_castle = false;
+                    new_board.wq_castle = false;
+                } else {
+                    new_board.bk_castle = false;
+                    new_board.bq_castle = false;
                 }
             }
         }
