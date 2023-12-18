@@ -34,7 +34,7 @@ impl Color {
     }
 
     #[inline]
-    fn is_white(self) -> bool {
+    pub fn is_white(self) -> bool {
         self == Color::White
     }
 }
@@ -220,6 +220,8 @@ pub struct Board {
     pub half_moves: usize,
     pub last_move: Option<Move>,
     pub last_event: Option<Event>,
+    pub white_cards: Vec<usize>,
+    pub black_cards: Vec<usize>,
 }
 
 impl std::fmt::Display for Board {
@@ -273,6 +275,8 @@ impl Default for Board {
             half_moves: 0,
             last_move: None,
             last_event: None,
+            white_cards: vec![0, 0],
+            black_cards: vec![0, 0],
         }
     }
 }
@@ -617,30 +621,29 @@ impl Board {
         }
     }
 
-    pub fn make_random_event(&self) -> Option<Event> {
-        if self.half_moves <= 3 {
-            return None;
+    pub fn draw_card(&mut self) -> Option<Event> {
+        let cards = if self.active.is_white() {
+            &mut self.white_cards
+        } else {
+            &mut self.black_cards
+        };
+        let card = cards.pop().unwrap();
+        if cards.is_empty() {
+            *cards = generate_cards(10);
         }
-        let p = 0.5 - 1.0 / (0.26 * self.half_moves as f64 + 1.22);
-        let b = thread_rng().gen_bool(p);
-        if !b {
-            return None;
+        match card {
+            0 => None,
+            1 => self.make_b2n(),
+            2 => self.make_n2b(),
+            3 => self.make_r2q(),
+            4 => self.make_q2r(),
+            5 => self.make_p2q(),
+            6 => self.make_q2p(),
+            7 => self.make_swap(),
+            8 => self.make_rotate(),
+            9 => self.make_pawn_run(),
+            _ => self.make_king_move(),
         }
-        let cands = vec![
-            self.make_swap(),
-            self.make_n2b(),
-            self.make_b2n(),
-            self.make_r2q(),
-            self.make_q2r(),
-            self.make_pawn_run(),
-            self.make_p2q(),
-            self.make_q2p(),
-            self.make_rotate(),
-            self.make_king_move(),
-        ];
-        let mut cands: Vec<_> = cands.into_iter().flatten().collect();
-        cands.shuffle(&mut thread_rng());
-        cands.into_iter().next()
     }
 
     fn gen_events<F: FnOnce(&[(Location, &Piece)], &mut Vec<Event>)>(&self, f: F) -> Option<Event> {
@@ -931,6 +934,18 @@ fn all_directions(dfile: i8, drank: i8) -> Vec<(i8, i8)> {
         }
     }
     dirs
+}
+
+fn generate_cards(len: usize) -> Vec<usize> {
+    (0..len)
+        .map(|_| {
+            if thread_rng().gen_bool(0.5) {
+                0
+            } else {
+                thread_rng().gen_range(1..=10)
+            }
+        })
+        .collect()
 }
 
 const INIT_PIECES: [[Option<Piece>; 8]; 8] = [

@@ -35,6 +35,16 @@
             top: 20px;
             right: 20px;
         }
+        #myCards {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+        }
+        #opponentCards {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+        }
         button {
             padding: 10px;
             margin: 5px;
@@ -60,6 +70,14 @@
             <button id="rook">Rook</button>
             <button id="bishop">Bishop</button>
             <button id="knight">Knight</button>
+        </div>
+        <div id="myCards">
+          <h1>내 카드</h1>
+          <p id="myCardInfo"></p>
+        </div>
+        <div id="opponentCards">
+          <h1>상대 카드</h1>
+          <p id="opponentCardInfo"></p>
         </div>
     </div>
     <script src="script.js"></script>

@@ -13,6 +13,8 @@ document.addEventListener("DOMContentLoaded", () => {
   const resultText = document.getElementById("result");
   const titleText = document.getElementById("title");
   const descText = document.getElementById("description");
+  const myText = document.getElementById("myCardInfo");
+  const opText = document.getElementById("opponentCardInfo");
   promotions.style.display = "none";
   resultText.innerText = "";
   titleText.innerText = "";
@@ -185,6 +187,14 @@ document.addEventListener("DOMContentLoaded", () => {
 
       if (message.check) {
         addOverlay(255, 0, 0, 0.2, message.check.file, message.check.rank);
+      }
+
+      if (message.my_cards) {
+        myText.innerText = message.my_cards.toString();
+      }
+
+      if (message.opponent_cards) {
+        opText.innerText = message.opponent_cards.toString();
       }
 
       if (message.last_event) {

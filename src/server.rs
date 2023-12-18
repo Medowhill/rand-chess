@@ -21,6 +21,8 @@ pub struct Message {
     check: Option<Location>,
     role: Role,
     half_moves: usize,
+    my_cards: Vec<usize>,
+    opponent_cards: Vec<usize>,
 }
 
 #[derive(Message)]
@@ -72,6 +74,14 @@ impl Server {
                 Role::Player(color) if color == self.board.active => moves.clone(),
                 _ => vec![],
             };
+            let my_cards = match role {
+                Role::Player(color) if !color.is_white() => self.board.black_cards.clone(),
+                _ => self.board.white_cards.clone(),
+            };
+            let opponent_cards = match role {
+                Role::Player(color) if !color.is_white() => self.board.white_cards.clone(),
+                _ => self.board.black_cards.clone(),
+            };
             addr.do_send(Message {
                 pieces,
                 moves,
@@ -81,6 +91,8 @@ impl Server {
                 check,
                 role,
                 half_moves,
+                my_cards,
+                opponent_cards,
             });
         }
     }
@@ -130,7 +142,7 @@ impl Handler<Request> for Server {
             Request::Move(mv) => {
                 self.board.move_piece(&mv);
                 if !self.board.is_game_over() {
-                    let ev = self.board.make_random_event();
+                    let ev = self.board.draw_card();
                     if let Some(ev) = ev {
                         self.board.apply_event(ev);
                     }
