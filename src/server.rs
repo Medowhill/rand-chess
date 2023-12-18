@@ -10,6 +10,7 @@ pub struct Message {
     pieces: [[Option<Piece>; 8]; 8],
     moves: Vec<(Location, Vec<Move>)>,
     state: GameState,
+    last: Option<Move>,
 }
 
 #[derive(Message)]
@@ -43,11 +44,13 @@ impl Server {
         let pieces = self.board.pieces;
         let moves = self.board.all_possible_moves();
         let state = self.board.game_state(&moves);
+        let last = self.board.last.clone();
         for addr in self.sessions.values() {
             addr.do_send(Message {
                 pieces,
                 moves: moves.clone(),
                 state,
+                last: last.clone(),
             });
         }
     }

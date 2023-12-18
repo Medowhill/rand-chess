@@ -170,6 +170,7 @@ pub struct Board {
     bk_castle: bool,
     bq_castle: bool,
     en_passant: Option<Location>,
+    pub last: Option<Move>,
 }
 
 impl std::fmt::Display for Board {
@@ -220,6 +221,7 @@ impl Default for Board {
             bk_castle: true,
             bq_castle: true,
             en_passant: None,
+            last: None,
         }
     }
 }
@@ -509,6 +511,7 @@ impl Board {
             piece.typ = typ;
         }
         new_board.set_piece(mv.to, Some(piece));
+        new_board.last = Some(mv.clone());
         new_board.active = new_board.active.other();
         new_board
     }

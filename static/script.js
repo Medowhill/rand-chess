@@ -11,19 +11,19 @@ document.addEventListener("DOMContentLoaded", () => {
   let targets = [];
   let waiting = true;
 
-  zoomInButton.addEventListener('click', () => {
+  zoomInButton.addEventListener("click", () => {
     size += 10;
     draw();
   });
 
-  zoomOutButton.addEventListener('click', () => {
+  zoomOutButton.addEventListener("click", () => {
     if (size > 10) {
       size -= 10;
       draw();
     }
   });
 
-  restartButton.addEventListener('click', () => {
+  restartButton.addEventListener("click", () => {
     if (socket) {
       socket.send(JSON.stringify("Restart"));
       waiting = true;
@@ -47,7 +47,7 @@ document.addEventListener("DOMContentLoaded", () => {
   function addPiece(fileName, file, rank) {
     const piece = document.createElement("div");
     piece.classList.add("chess-piece");
-    piece.style.backgroundImage = `url('${fileName}')`;
+    piece.style.backgroundImage = `url("${fileName}")`;
     piece.style.width = `${size}px`;
     piece.style.height = `${size}px`;
     piece.style.left = `${file * size}px`;
@@ -55,15 +55,28 @@ document.addEventListener("DOMContentLoaded", () => {
     chessboard.appendChild(piece);
   }
 
-  function addOverlay(r, g, b, file, rank) {
-    const overlay = document.createElement('div');
-    overlay.style.position = 'absolute';
+  function addOverlay(r, g, b, a, file, rank) {
+    const overlay = document.createElement("div");
+    overlay.style.position = "absolute";
     overlay.style.width = `${size}px`;
     overlay.style.height = `${size}px`;
     overlay.style.left = `${file * size}px`;
     overlay.style.top = `${(7 - rank) * size}px`;
-    overlay.style.backgroundColor = `rgba(${r}, ${g}, ${b}, 0.2)`;
-    overlay.style.display = 'block';
+    overlay.style.display = "block";
+    overlay.style.backgroundColor = `rgba(${r}, ${g}, ${b}, ${a})`;
+    chessboard.appendChild(overlay);
+  }
+
+  function addCircle(r, g, b, a, s, file, rank) {
+    const overlay = document.createElement("div");
+    overlay.style.position = "absolute";
+    overlay.style.width = `${size * s}px`;
+    overlay.style.height = `${size * s}px`;
+    overlay.style.left = `${file * size + (1 - s) * size / 2}px`;
+    overlay.style.top = `${(7 - rank) * size + (1 - s) * size / 2}px`;
+    overlay.style.display = "block";
+    overlay.style.borderRadius = "50%";
+    overlay.style.backgroundColor = `rgba(${r}, ${g}, ${b}, ${a})`;
     chessboard.appendChild(overlay);
   }
 
@@ -87,16 +100,24 @@ document.addEventListener("DOMContentLoaded", () => {
       } else if (message.state !== "Normal") {
         resultText.innerText = `${message.state.Checkmate} won`;
       }
+
+      if (message.last) {
+        const from = message.last.from;
+        addOverlay(255, 255, 0, 0.2, from.file, from.rank);
+        const to = message.last.to;
+        addOverlay(255, 255, 0, 0.2, to.file, to.rank);
+      }
     }
     
     if (selected) {
-      addOverlay(0, 0, 0, selected.file, selected.rank);
+      addOverlay(255, 255, 0, 0.2, selected.file, selected.rank);
       if (message) {
         for (const [loc, moves] of message.moves) {
           if (loc.file === selected.file && loc.rank === selected.rank) {
             targets = moves;
             for (const mv of targets) {
-              addOverlay(255, 255, 0, mv.to.file, mv.to.rank);
+              const s = (mv.attack && samePos(mv.attack[0], mv.to)) ? 0.8 : 0.33;
+              addCircle(180, 180, 180, 0.7, s, mv.to.file, mv.to.rank);
             }
           }
         }
@@ -117,7 +138,7 @@ document.addEventListener("DOMContentLoaded", () => {
     return pos1.file === pos2.file && pos1.rank === pos2.rank;
   }
 
-  chessboard.addEventListener('click', event => {
+  chessboard.addEventListener("click", event => {
     if (waiting)
       return;
     const pos = getChessboardPosition(event);
@@ -153,7 +174,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const { location } = window;
 
-    const proto = location.protocol.startsWith('https') ? 'wss' : 'ws';
+    const proto = location.protocol.startsWith("https") ? "wss" : "ws";
     const wsUri = `${proto}://${location.host}/ws`;
 
     socket = new WebSocket(wsUri);
