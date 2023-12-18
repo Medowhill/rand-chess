@@ -2,6 +2,8 @@ document.addEventListener("DOMContentLoaded", () => {
   const chessboard = document.getElementById("chessboard");
   const zoomInButton = document.getElementById("zoomIn");
   const zoomOutButton = document.getElementById("zoomOut");
+  const restartButton = document.getElementById("restart");
+  const resultText = document.getElementById("result");
 
   let size = 70;
   let message = null;
@@ -18,6 +20,13 @@ document.addEventListener("DOMContentLoaded", () => {
     if (size > 10) {
       size -= 10;
       draw();
+    }
+  });
+
+  restartButton.addEventListener('click', () => {
+    if (socket) {
+      socket.send(JSON.stringify("Restart"));
+      waiting = true;
     }
   });
 
@@ -62,6 +71,7 @@ document.addEventListener("DOMContentLoaded", () => {
     chessboard.style.width = `${8 * size}px`;
     chessboard.style.height = `${8 * size}px`;
     chessboard.innerHTML = "";
+    resultText.innerText = "";
 
     if (message) {
       for (let rank = 0; rank < 8; rank++) {
@@ -70,6 +80,12 @@ document.addEventListener("DOMContentLoaded", () => {
           if (piece)
             addPiece(pieceToFile(piece), file, rank);
         }
+      }
+
+      if (message.state === "Stalemate") {
+        resultText.innerText = "Stalemate";
+      } else if (message.state !== "Normal") {
+        resultText.innerText = `${message.state.Checkmate} won`;
       }
     }
     

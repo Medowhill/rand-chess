@@ -22,6 +22,16 @@
             position: absolute;
             background-size: cover;
         }
+        #states {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+        }
+        #promotions {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+        }
         #controls {
             position: fixed;
             bottom: 20px;
@@ -36,9 +46,19 @@
 </head>
 <body>
     <div id="chessboard"></div>
+    <div id="states">
+        <h1 id="result"></h1>
+    </div>
+    <div id="promotions">
+        <button id="queen">Queen</button>
+        <button id="rook">Rook</button>
+        <button id="bishop">Bishop</button>
+        <button id="knight">Knight</button>
+    </div>
     <div id="controls">
         <button id="zoomIn">Zoom In</button>
         <button id="zoomOut">Zoom Out</button>
+        <button id="restart">Restart</button>
     </div>
     <script src="script.js"></script>
 </body>

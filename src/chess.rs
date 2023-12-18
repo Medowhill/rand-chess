@@ -11,7 +11,7 @@ enum PieceType {
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Deserialize, Serialize)]
-enum Color {
+pub enum Color {
     White,
     Black,
 }
@@ -121,7 +121,7 @@ enum LocationState {
     Friendly,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Move {
     piece: Piece,
     from: Location,
@@ -152,6 +152,13 @@ impl Move {
         self.castle = Some((rook_from, rook_to));
         self
     }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Deserialize, Serialize)]
+pub enum GameState {
+    Normal,
+    Checkmate(Color),
+    Stalemate,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -280,7 +287,21 @@ impl Board {
     pub fn all_possible_moves(&self) -> Vec<(Location, Vec<Move>)> {
         self.iter_pieces_of(self.active)
             .map(|(loc, piece)| (loc, self.possible_moves(loc, *piece, true)))
+            .filter(|(_, moves)| !moves.is_empty())
             .collect()
+    }
+
+    pub fn game_state(&self, possible_moves: &[(Location, Vec<Move>)]) -> GameState {
+        if possible_moves.is_empty() {
+            let other = self.active.other();
+            if self.can_attack_king(other) {
+                GameState::Checkmate(other)
+            } else {
+                GameState::Stalemate
+            }
+        } else {
+            GameState::Normal
+        }
     }
 
     fn possible_moves(&self, loc: Location, piece: Piece, safe: bool) -> Vec<Move> {

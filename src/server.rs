@@ -9,6 +9,7 @@ use std::collections::HashMap;
 pub struct Message {
     pieces: [[Option<Piece>; 8]; 8],
     moves: Vec<(Location, Vec<Move>)>,
+    state: GameState,
 }
 
 #[derive(Message)]
@@ -37,6 +38,21 @@ pub struct Server {
     id: usize,
 }
 
+impl Server {
+    fn send_state(&self) {
+        let pieces = self.board.pieces;
+        let moves = self.board.all_possible_moves();
+        let state = self.board.game_state(&moves);
+        for addr in self.sessions.values() {
+            addr.do_send(Message {
+                pieces,
+                moves: moves.clone(),
+                state,
+            });
+        }
+    }
+}
+
 impl Actor for Server {
     type Context = Context<Self>;
 }
@@ -46,13 +62,10 @@ impl Handler<Connect> for Server {
 
     fn handle(&mut self, msg: Connect, _: &mut Context<Self>) -> Self::Result {
         println!("connected");
-        msg.addr.do_send(Message {
-            pieces: self.board.pieces,
-            moves: self.board.all_possible_moves(),
-        });
         let id = self.id;
         self.id += 1;
         self.sessions.insert(id, msg.addr);
+        self.send_state();
         id
     }
 }
@@ -73,14 +86,12 @@ impl Handler<Request> for Server {
         match msg {
             Request::Move(mv) => {
                 self.board.move_piece(&mv);
-                for addr in self.sessions.values() {
-                    addr.do_send(Message {
-                        pieces: self.board.pieces,
-                        moves: self.board.all_possible_moves(),
-                    });
-                }
+                self.send_state();
             }
-            Request::Restart => {}
+            Request::Restart => {
+                self.board = Board::default();
+                self.send_state();
+            }
         }
     }
 }
