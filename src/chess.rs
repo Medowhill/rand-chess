@@ -202,6 +202,8 @@ pub enum Event {
     RooksToQueen(Location, Location),
     QueenToRooks(Location, Location),
     PawnRun(Location, Location),
+    PawnsToQueen([Location; 8]),
+    QueenToPawns(Location, i8),
 }
 
 #[derive(Debug, Clone)]
@@ -629,6 +631,8 @@ impl Board {
             self.make_r2q(),
             self.make_q2r(),
             self.make_pawn_run(),
+            self.make_p2q(),
+            self.make_q2p(),
         ];
         let mut cands: Vec<_> = cands.into_iter().flatten().collect();
         cands.shuffle(&mut thread_rng());
@@ -722,6 +726,47 @@ impl Board {
         })
     }
 
+    fn make_p2q(&self) -> Option<Event> {
+        self.gen_events(|pieces, cands| {
+            let pawns: Vec<_> = pieces
+                .iter()
+                .filter_map(|(l, p)| if p.is_pawn() { Some(*l) } else { None })
+                .take(8)
+                .collect();
+            if pawns.len() < 8 {
+                return;
+            }
+            for i in 0..8 {
+                let mut v = pawns.clone();
+                v.swap(0, i);
+                cands.push(Event::PawnsToQueen(v.try_into().unwrap()));
+            }
+        })
+    }
+
+    fn make_q2p(&self) -> Option<Event> {
+        self.gen_events(|pieces, cands| {
+            for (l, _) in pieces.iter().filter(|(_, p)| p.is_queen()) {
+                for rank in 0..8 {
+                    if rank == self.final_rank() {
+                        continue;
+                    }
+                    let mut clean = true;
+                    for file in 0..8 {
+                        let location = Location::new(file, rank);
+                        if location != *l && !self.is_empty(location) {
+                            clean = false;
+                            break;
+                        }
+                    }
+                    if clean {
+                        cands.push(Event::QueenToPawns(*l, rank));
+                    }
+                }
+            }
+        })
+    }
+
     fn is_valid_event(&self, event: Event) -> bool {
         let board = self.event_applied(event);
         !board.can_attack_king(board.active) && !board.all_possible_moves().is_empty()
@@ -770,6 +815,23 @@ impl Board {
                 let piece = self.piece(l1).unwrap();
                 new_board.set_piece(l1, None);
                 new_board.set_piece(l2, Some(piece));
+            }
+            Event::PawnsToQueen(ls) => {
+                let mut piece = self.piece(ls[0]).unwrap();
+                piece.typ = PieceType::Queen;
+                new_board.set_piece(ls[0], Some(piece));
+                for l in ls.iter().skip(1) {
+                    new_board.set_piece(*l, None);
+                }
+            }
+            Event::QueenToPawns(l, rank) => {
+                let mut piece = self.piece(l).unwrap();
+                piece.typ = PieceType::Pawn;
+                new_board.set_piece(l, None);
+                for i in 0..8 {
+                    let loc = Location::new(i as _, rank);
+                    new_board.set_piece(loc, Some(piece));
+                }
             }
         }
         new_board.last_event = Some(event);
