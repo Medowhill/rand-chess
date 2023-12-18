@@ -70,14 +70,22 @@ document.addEventListener("DOMContentLoaded", () => {
     return s;
   }
 
+  function fileToLeft(file) {
+    return (message.role.Player === "Black" ? (7 - file) : file) * size;
+  }
+
+  function rankToTop(rank) {
+    return (message.role.Player === "Black" ? rank : (7 - rank)) * size;
+  }
+
   function addPiece(fileName, file, rank) {
     const piece = document.createElement("div");
     piece.classList.add("chess-piece");
     piece.style.backgroundImage = `url("${fileName}")`;
     piece.style.width = `${size}px`;
     piece.style.height = `${size}px`;
-    piece.style.left = `${file * size}px`;
-    piece.style.top = `${(7 - rank) * size}px`;
+    piece.style.left = `${fileToLeft(file)}px`;
+    piece.style.top = `${rankToTop(rank)}px`;
     chessboard.appendChild(piece);
   }
 
@@ -86,8 +94,8 @@ document.addEventListener("DOMContentLoaded", () => {
     overlay.style.position = "absolute";
     overlay.style.width = `${size}px`;
     overlay.style.height = `${size}px`;
-    overlay.style.left = `${file * size}px`;
-    overlay.style.top = `${(7 - rank) * size}px`;
+    overlay.style.left = `${fileToLeft(file)}px`;
+    overlay.style.top = `${rankToTop(rank)}px`;
     overlay.style.display = "block";
     overlay.style.backgroundColor = `rgba(${r}, ${g}, ${b}, ${a})`;
     chessboard.appendChild(overlay);
@@ -98,8 +106,8 @@ document.addEventListener("DOMContentLoaded", () => {
     overlay.style.position = "absolute";
     overlay.style.width = `${size * s}px`;
     overlay.style.height = `${size * s}px`;
-    overlay.style.left = `${file * size + (1 - s) * size / 2}px`;
-    overlay.style.top = `${(7 - rank) * size + (1 - s) * size / 2}px`;
+    overlay.style.left = `${fileToLeft(file) + (1 - s) * size / 2}px`;
+    overlay.style.top = `${rankToTop(rank) + (1 - s) * size / 2}px`;
     overlay.style.display = "block";
     overlay.style.borderRadius = "50%";
     overlay.style.backgroundColor = `rgba(${r}, ${g}, ${b}, ${a})`;
@@ -155,8 +163,12 @@ document.addEventListener("DOMContentLoaded", () => {
     const bounds = chessboard.getBoundingClientRect();
     const x = event.clientX - bounds.left;
     const y = event.clientY - bounds.top;
-    const rank = 7 - Math.floor(y / size);
-    const file = Math.floor(x / size);
+    let rank = 7 - Math.floor(y / size);
+    let file = Math.floor(x / size);
+    if (message.role.Player === "Black") {
+      rank = 7 - rank;
+      file = 7 - file;
+    }
     return { rank, file };
   }
 
@@ -165,7 +177,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   chessboard.addEventListener("click", event => {
-    if (waiting)
+    if (message === null || waiting)
       return;
     promotions.style.display = "none";
     const pos = getChessboardPosition(event);

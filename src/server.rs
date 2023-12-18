@@ -4,6 +4,12 @@ use chess::*;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
+#[derive(Serialize, Deserialize, Clone, Copy, PartialEq, Eq)]
+enum Role {
+    Player(Color),
+    Spectator,
+}
+
 #[derive(Message, Serialize, Deserialize)]
 #[rtype(result = "()")]
 pub struct Message {
@@ -11,6 +17,7 @@ pub struct Message {
     moves: Vec<(Location, Vec<Move>)>,
     state: GameState,
     last: Option<Move>,
+    role: Role,
 }
 
 #[derive(Message)]
@@ -35,6 +42,8 @@ pub enum Request {
 #[derive(Debug, Default)]
 pub struct Server {
     sessions: HashMap<usize, Recipient<Message>>,
+    white: Option<usize>,
+    black: Option<usize>,
     board: Board,
     id: usize,
 }
@@ -45,12 +54,24 @@ impl Server {
         let moves = self.board.all_possible_moves();
         let state = self.board.game_state(&moves);
         let last = self.board.last.clone();
-        for addr in self.sessions.values() {
+        for (id, addr) in &self.sessions {
+            let role = if Some(*id) == self.white {
+                Role::Player(Color::White)
+            } else if Some(*id) == self.black {
+                Role::Player(Color::Black)
+            } else {
+                Role::Spectator
+            };
+            let moves = match role {
+                Role::Player(color) if color == self.board.active => moves.clone(),
+                _ => vec![],
+            };
             addr.do_send(Message {
                 pieces,
-                moves: moves.clone(),
+                moves,
                 state,
                 last: last.clone(),
+                role,
             });
         }
     }
@@ -64,10 +85,15 @@ impl Handler<Connect> for Server {
     type Result = usize;
 
     fn handle(&mut self, msg: Connect, _: &mut Context<Self>) -> Self::Result {
-        println!("connected");
         let id = self.id;
+        println!("connected {}", id);
         self.id += 1;
         self.sessions.insert(id, msg.addr);
+        if self.white.is_none() {
+            self.white = Some(id);
+        } else if self.black.is_none() {
+            self.black = Some(id);
+        }
         self.send_state();
         id
     }
@@ -77,8 +103,13 @@ impl Handler<Disconnect> for Server {
     type Result = ();
 
     fn handle(&mut self, msg: Disconnect, _: &mut Context<Self>) {
-        println!("disconnected");
+        println!("disconnected {}", msg.id);
         self.sessions.remove(&msg.id);
+        if self.white == Some(msg.id) {
+            self.white = None;
+        } else if self.black == Some(msg.id) {
+            self.black = None;
+        }
     }
 }
 

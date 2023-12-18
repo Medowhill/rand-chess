@@ -166,7 +166,7 @@ pub enum GameState {
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Board {
     pub pieces: [[Option<Piece>; 8]; 8],
-    active: Color,
+    pub active: Color,
     wk_castle: bool,
     wq_castle: bool,
     bk_castle: bool,
