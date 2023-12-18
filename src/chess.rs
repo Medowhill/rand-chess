@@ -331,12 +331,26 @@ impl Board {
         }
     }
 
+    pub fn get_check(&self) -> Option<Location> {
+        for (loc, piece) in self.iter_pieces_of(self.active.other()) {
+            let moves = self.possible_moves(loc, *piece, false);
+            for mv in moves {
+                if let Some((loc, piece)) = mv.attack {
+                    if piece.is_king() {
+                        return Some(loc);
+                    }
+                }
+            }
+        }
+        None
+    }
+
     fn can_attack_king(&self, color: Color) -> bool {
         for (loc, piece) in self.iter_pieces_of(color) {
             let moves = self.possible_moves(loc, *piece, false);
             for mv in moves {
                 if let Some((_, piece)) = mv.attack {
-                    if piece.typ == PieceType::King {
+                    if piece.is_king() {
                         return true;
                     }
                 }
@@ -363,6 +377,12 @@ impl Board {
         } else {
             GameState::Normal
         }
+    }
+
+    pub fn is_game_over(&self) -> bool {
+        let possible_moves = self.all_possible_moves();
+        let st = self.game_state(&possible_moves);
+        st != GameState::Normal
     }
 
     fn possible_moves(&self, loc: Location, piece: Piece, safe: bool) -> Vec<Move> {
@@ -575,6 +595,7 @@ impl Board {
         }
         new_board.set_piece(mv.to, Some(piece));
         new_board.last_move = Some(mv.clone());
+        new_board.last_event = None;
         new_board.active = new_board.active.other();
         new_board.half_moves += 1;
         new_board

@@ -18,6 +18,7 @@ pub struct Message {
     state: GameState,
     last: Option<Move>,
     last_event: Option<Event>,
+    check: Option<Location>,
     role: Role,
 }
 
@@ -56,6 +57,7 @@ impl Server {
         let state = self.board.game_state(&moves);
         let last = self.board.last_move.clone();
         let last_event = self.board.last_event;
+        let check = self.board.get_check();
         for (id, addr) in &self.sessions {
             let role = if Some(*id) == self.white {
                 Role::Player(Color::White)
@@ -74,6 +76,7 @@ impl Server {
                 state,
                 last: last.clone(),
                 last_event,
+                check,
                 role,
             });
         }
@@ -123,9 +126,11 @@ impl Handler<Request> for Server {
         match msg {
             Request::Move(mv) => {
                 self.board.move_piece(&mv);
-                let ev = self.board.make_random_event();
-                if let Some(ev) = ev {
-                    self.board.apply_event(ev);
+                if !self.board.is_game_over() {
+                    let ev = self.board.make_random_event();
+                    if let Some(ev) = ev {
+                        self.board.apply_event(ev);
+                    }
                 }
                 self.send_state();
             }
