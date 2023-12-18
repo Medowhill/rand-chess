@@ -27,20 +27,12 @@
             top: 20px;
             left: 20px;
         }
-        #events {
-            position: fixed;
-            bottom: 20px;
-            left: 20px;
-        }
         #promotions {
-            position: fixed;
-            top: 20px;
-            right: 20px;
             display: none;
         }
         #controls {
             position: fixed;
-            bottom: 20px;
+            top: 20px;
             right: 20px;
         }
         button {
@@ -54,21 +46,21 @@
     <div id="chessboard"></div>
     <div id="states">
         <h1 id="result"></h1>
-    </div>
-    <div id="events">
         <h1 id="title"></h1>
         <p id="description"></p>
     </div>
-    <div id="promotions">
-        <button id="queen">Queen</button>
-        <button id="rook">Rook</button>
-        <button id="bishop">Bishop</button>
-        <button id="knight">Knight</button>
-    </div>
     <div id="controls">
+        <button id="prev">Prev</button>
+        <button id="next">Next</button>
         <button id="zoomIn">Zoom In</button>
         <button id="zoomOut">Zoom Out</button>
         <button id="restart">Restart</button>
+        <div id="promotions">
+            <button id="queen">Queen</button>
+            <button id="rook">Rook</button>
+            <button id="bishop">Bishop</button>
+            <button id="knight">Knight</button>
+        </div>
     </div>
     <script src="script.js"></script>
 </body>

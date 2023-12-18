@@ -20,6 +20,7 @@ pub struct Message {
     last_event: Option<Event>,
     check: Option<Location>,
     role: Role,
+    half_moves: usize,
 }
 
 #[derive(Message)]
@@ -58,6 +59,7 @@ impl Server {
         let last = self.board.last_move.clone();
         let last_event = self.board.last_event;
         let check = self.board.get_check();
+        let half_moves = self.board.half_moves;
         for (id, addr) in &self.sessions {
             let role = if Some(*id) == self.white {
                 Role::Player(Color::White)
@@ -78,6 +80,7 @@ impl Server {
                 last_event,
                 check,
                 role,
+                half_moves,
             });
         }
     }

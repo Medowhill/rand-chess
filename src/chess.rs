@@ -213,7 +213,7 @@ pub struct Board {
     bk_castle: bool,
     bq_castle: bool,
     en_passant: Option<Location>,
-    half_moves: usize,
+    pub half_moves: usize,
     pub last_move: Option<Move>,
     pub last_event: Option<Event>,
 }
@@ -614,7 +614,12 @@ impl Board {
     }
 
     pub fn make_random_event(&self) -> Option<Event> {
-        if self.half_moves < 2 {
+        if self.half_moves <= 3 {
+            return None;
+        }
+        let p = 0.5 - 1.0 / (0.26 * self.half_moves as f64 + 1.22);
+        let b = thread_rng().gen_bool(p);
+        if !b {
             return None;
         }
         let cands = vec![

@@ -4,6 +4,8 @@ document.addEventListener("DOMContentLoaded", () => {
   const zoomInButton = document.getElementById("zoomIn");
   const zoomOutButton = document.getElementById("zoomOut");
   const restartButton = document.getElementById("restart");
+  const prevButton = document.getElementById("prev");
+  const nextButton = document.getElementById("next");
   const queenButton = document.getElementById("queen");
   const rookButton = document.getElementById("rook");
   const bishopButton = document.getElementById("bishop");
@@ -17,12 +19,13 @@ document.addEventListener("DOMContentLoaded", () => {
   descText.innerText = "";
 
   let size = 70;
-  let message = null;
+  let messages = [];
+  let cursor = -1;
   let selected = null;
   let targets = [];
   let waiting = true;
   let promotionMove = null;
-
+  
   zoomInButton.addEventListener("click", () => {
     size += 10;
     draw();
@@ -32,6 +35,35 @@ document.addEventListener("DOMContentLoaded", () => {
     if (size > 10) {
       size -= 10;
       draw();
+    }
+  });
+
+  function prev() {
+    if (cursor > 0) {
+      cursor--;
+      selected = null;
+      targets = [];
+      draw();
+    }
+  }
+
+  function next() {
+    if (cursor < messages.length - 1) {
+      cursor++;
+      selected = null;
+      targets = [];
+      draw();
+    }
+  }
+
+  prevButton.addEventListener("click", prev);
+  nextButton.addEventListener("click", next);
+
+  document.addEventListener("keydown", event => {
+    if (event.keyCode === 37) {
+      prev();
+    } else if (event.keyCode === 39) {
+      next();
     }
   });
 
@@ -76,11 +108,11 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function fileToLeft(file) {
-    return (message.role.Player === "Black" ? (7 - file) : file) * size;
+    return (messages[cursor].role.Player === "Black" ? (7 - file) : file) * size;
   }
 
   function rankToTop(rank) {
-    return (message.role.Player === "Black" ? rank : (7 - rank)) * size;
+    return (messages[cursor].role.Player === "Black" ? rank : (7 - rank)) * size;
   }
 
   function addPiece(fileName, file, rank) {
@@ -120,6 +152,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function draw() {
+    const message = messages[cursor];
     chessboard.style.width = `${8 * size}px`;
     chessboard.style.height = `${8 * size}px`;
     chessboard.innerHTML = "";
@@ -137,9 +170,10 @@ document.addEventListener("DOMContentLoaded", () => {
       }
 
       if (message.state === "Stalemate") {
-        resultText.innerText = "Stalemate";
+        resultText.innerText = "스테일메이트";
       } else if (message.state !== "Normal") {
-        resultText.innerText = `${message.state.Checkmate} won`;
+        const color = message.state.Checkmate === "White" ? "백" : "흑";
+        resultText.innerText = `${color} 승리`;
       }
 
       if (message.last) {
@@ -214,7 +248,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const y = event.clientY - bounds.top;
     let rank = 7 - Math.floor(y / size);
     let file = Math.floor(x / size);
-    if (message.role.Player === "Black") {
+    if (messages[cursor].role.Player === "Black") {
       rank = 7 - rank;
       file = 7 - file;
     }
@@ -226,7 +260,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   chessboard.addEventListener("click", event => {
-    if (message === null || waiting)
+    if (messages[cursor] === null || cursor !== messages.length - 1 || waiting)
       return;
     promotions.style.display = "none";
     const pos = getChessboardPosition(event);
@@ -275,7 +309,10 @@ document.addEventListener("DOMContentLoaded", () => {
       console.log("connected");
     };
     socket.onmessage = (ev) => {
-      message = JSON.parse(ev.data);
+      const message = JSON.parse(ev.data);
+      if (message.half_moves === 0) messages = [];
+      messages.push(message);
+      cursor = messages.length - 1;
       waiting = false;
       draw();
     };
@@ -287,7 +324,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function onclose() {
     socket = null
-    message = null;
+    messages = [];
+    cursor = -1;
+    selected = null;
+    targets = [];
     waiting = true;
     draw();
   }
