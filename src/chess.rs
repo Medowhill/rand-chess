@@ -128,7 +128,8 @@ pub struct Move {
     to: Location,
     attack: Option<(Location, Piece)>,
     castle: Option<(Location, Location)>,
-    promotion: Option<PieceType>,
+    is_promotion: bool,
+    promote_to: Option<PieceType>,
 }
 
 impl Move {
@@ -139,7 +140,8 @@ impl Move {
             to,
             attack: None,
             castle: None,
-            promotion: None,
+            is_promotion: false,
+            promote_to: None,
         }
     }
 
@@ -344,6 +346,12 @@ impl Board {
                         _ => {}
                     }
                 }
+                for mv in &mut moves {
+                    let eighth_rank = if color.is_white() { 7 } else { 0 };
+                    if mv.to.rank == eighth_rank {
+                        mv.is_promotion = true;
+                    }
+                }
                 moves
             }
             PieceType::Knight => {
@@ -507,7 +515,7 @@ impl Board {
                 _ => {}
             }
         }
-        if let Some(typ) = mv.promotion {
+        if let Some(typ) = mv.promote_to {
             piece.typ = typ;
         }
         new_board.set_piece(mv.to, Some(piece));

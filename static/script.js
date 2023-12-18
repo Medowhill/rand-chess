@@ -1,15 +1,22 @@
 document.addEventListener("DOMContentLoaded", () => {
   const chessboard = document.getElementById("chessboard");
+  const promotions = document.getElementById("promotions");
   const zoomInButton = document.getElementById("zoomIn");
   const zoomOutButton = document.getElementById("zoomOut");
   const restartButton = document.getElementById("restart");
+  const queenButton = document.getElementById("queen");
+  const rookButton = document.getElementById("rook");
+  const bishopButton = document.getElementById("bishop");
+  const knightButton = document.getElementById("knight");
   const resultText = document.getElementById("result");
+  promotions.style.display = "none";
 
   let size = 70;
   let message = null;
   let selected = null;
   let targets = [];
   let waiting = true;
+  let promotionMove = null;
 
   zoomInButton.addEventListener("click", () => {
     size += 10;
@@ -29,6 +36,25 @@ document.addEventListener("DOMContentLoaded", () => {
       waiting = true;
     }
   });
+
+  function promotionClick(event) {
+    promotions.style.display = "none";
+    if (promotionMove) {
+      promotionMove.promote_to = event.target.innerText;
+      selected = null;
+      targets = [];
+      move = true;
+      if (socket) {
+        socket.send(JSON.stringify({ "Move": promotionMove }));
+        waiting = true;
+      }
+    }
+  }
+
+  queenButton.addEventListener("click", promotionClick);
+  rookButton.addEventListener("click", promotionClick);
+  bishopButton.addEventListener("click", promotionClick);
+  knightButton.addEventListener("click", promotionClick);
 
   function pieceToFile(piece) {
     let s = piece.color === "White" ? "w" : "b";
@@ -141,6 +167,7 @@ document.addEventListener("DOMContentLoaded", () => {
   chessboard.addEventListener("click", event => {
     if (waiting)
       return;
+    promotions.style.display = "none";
     const pos = getChessboardPosition(event);
     if (selected) {
       if (samePos(pos, selected)) {
@@ -149,12 +176,17 @@ document.addEventListener("DOMContentLoaded", () => {
         let move = false;
         for (const mv of targets) {
           if (samePos(pos, mv.to)) {
-            selected = null;
-            targets = [];
             move = true;
-            if (socket) {
-              socket.send(JSON.stringify({ "Move": mv }));
-              waiting = true;
+            if (mv.is_promotion) {
+              promotions.style.display = "block";
+              promotionMove = mv;
+            } else {
+              selected = null;
+              targets = [];
+              if (socket) {
+                socket.send(JSON.stringify({ "Move": mv }));
+                waiting = true;
+              }
             }
           }
         }
