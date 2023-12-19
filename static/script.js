@@ -286,6 +286,7 @@ document.addEventListener("DOMContentLoaded", () => {
         } else if (message.last_card !== null) {
           if (message.last_card === 0) {
             titleText.innerText = cardNames[0];
+            descText.innerText = "-";
           } else {
             titleText.innerText = "발동 실패";
             descText.innerText = cardNames[message.last_card];
