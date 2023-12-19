@@ -20,7 +20,7 @@ document.addEventListener("DOMContentLoaded", () => {
   titleText.innerText = "";
   descText.innerText = "";
 
-  let size = 70;
+  let size = chessboard.offsetWidth / 8;
   let messages = [];
   let cursor = -1;
   let selected = null;

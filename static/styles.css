@@ -1,0 +1,88 @@
+body {
+    margin: 0;
+    height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background-color: #f0f0f0;
+}
+#chessboard {
+    position: relative;
+    width: 560px;
+    height: 560px;
+    background-image: url('brown.svg');
+    background-size: cover;
+}
+.chess-piece {
+    position: absolute;
+    background-size: cover;
+}
+#states {
+    position: fixed;
+    top: 20px;
+    left: 20px;
+}
+#promotions {
+    display: none;
+}
+#controls {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+}
+#myCards {
+    position: fixed;
+    bottom: 20px;
+    left: 20px;
+}
+#opponentCards {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+}
+button {
+    padding: 10px;
+    margin: 5px;
+    cursor: pointer;
+}
+
+@media screen and (max-width: 768px) {
+    body {
+        flex-direction: column;
+        align-items: stretch;
+        justify-content: flex-start;
+        height: auto;
+    }
+    #chessboard, #controls, #states, #myCards, #opponentCards {
+        position: relative;
+        width: 95%;
+        margin: 10px auto;
+        height: auto;
+    }
+    #controls {
+        order: 1;
+        top: 0;
+        right: 0;
+    }
+    #chessboard {
+        order: 2;
+    }
+    #states {
+        order: 3;
+        top: 0;
+        left: 0;
+    }
+    #myCards {
+        order: 4;
+        bottom: 0;
+        left: 0;
+    }
+    #opponentCards {
+        order: 5;
+        bottom: 0;
+        right: 0;
+    }
+    #zoomIn, #zoomOut {
+        display: none;
+    }
+}

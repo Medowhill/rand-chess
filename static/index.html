@@ -4,53 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Chess</title>
-    <style>
-        body {
-            margin: 0;
-            height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            background-color: #f0f0f0;
-        }
-        #chessboard {
-            position: relative;
-            background-image: url('brown.svg');
-            background-size: cover;
-        }
-        .chess-piece {
-            position: absolute;
-            background-size: cover;
-        }
-        #states {
-            position: fixed;
-            top: 20px;
-            left: 20px;
-        }
-        #promotions {
-            display: none;
-        }
-        #controls {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-        }
-        #myCards {
-            position: fixed;
-            bottom: 20px;
-            left: 20px;
-        }
-        #opponentCards {
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-        }
-        button {
-            padding: 10px;
-            margin: 5px;
-            cursor: pointer;
-        }
-    </style>
+    <link rel="stylesheet" href="styles.css">
 </head>
 <body>
     <div id="chessboard"></div>
@@ -71,14 +25,14 @@
             <button id="bishop">Bishop</button>
             <button id="knight">Knight</button>
         </div>
-        <div id="myCards">
-          <h1>내 카드</h1>
-          <div id="myCardInfo"></div>
-        </div>
-        <div id="opponentCards">
-          <h1>상대 카드</h1>
-          <div id="opponentCardInfo"></div>
-        </div>
+    </div>
+    <div id="myCards">
+      <h1>내 카드</h1>
+      <div id="myCardInfo"></div>
+    </div>
+    <div id="opponentCards">
+      <h1>상대 카드</h1>
+      <div id="opponentCardInfo"></div>
     </div>
     <script src="script.js"></script>
 </body>
