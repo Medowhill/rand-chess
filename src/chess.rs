@@ -220,6 +220,7 @@ pub struct Board {
     pub half_moves: usize,
     pub last_move: Option<Move>,
     pub last_event: Option<Event>,
+    pub last_card: Option<usize>,
     pub white_cards: Vec<usize>,
     pub black_cards: Vec<usize>,
 }
@@ -275,6 +276,7 @@ impl Default for Board {
             half_moves: 0,
             last_move: None,
             last_event: None,
+            last_card: None,
             white_cards: vec![0, 0],
             black_cards: vec![0, 0],
         }
@@ -621,17 +623,18 @@ impl Board {
         }
     }
 
-    pub fn draw_card(&mut self) -> Option<Event> {
+    pub fn draw_card(&mut self) {
         let cards = if self.active.is_white() {
             &mut self.white_cards
         } else {
             &mut self.black_cards
         };
         let card = cards.pop().unwrap();
+        self.last_card = Some(card);
         if cards.is_empty() {
-            *cards = generate_cards(10);
+            *cards = generate_cards(5);
         }
-        match card {
+        let ev = match card {
             0 => None,
             1 => self.make_b2n(),
             2 => self.make_n2b(),
@@ -643,6 +646,9 @@ impl Board {
             8 => self.make_rotate(),
             9 => self.make_pawn_run(),
             _ => self.make_king_move(),
+        };
+        if let Some(ev) = ev {
+            self.apply_event(ev);
         }
     }
 
@@ -903,7 +909,7 @@ impl Board {
         new_board
     }
 
-    pub fn apply_event(&mut self, event: Event) {
+    fn apply_event(&mut self, event: Event) {
         *self = self.event_applied(event);
     }
 }

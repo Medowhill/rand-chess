@@ -28,6 +28,7 @@ async fn main() -> std::io::Result<()> {
         App::new()
             .app_data(web::Data::new(server.clone()))
             .route("/ws", web::get().to(ws_route))
+            .service(web::redirect("/", "/index.html"))
             .service(Files::new("/", "./static"))
     })
     .bind(("0.0.0.0", 8000))?

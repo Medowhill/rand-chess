@@ -153,6 +153,33 @@ document.addEventListener("DOMContentLoaded", () => {
     chessboard.appendChild(overlay);
   }
 
+  const cardNames = [
+    "효과 없음",
+    "말에 오르다",
+    "말에서 내리다",
+    "융합",
+    "분열",
+    "합체",
+    "산산조각",
+    "교대 근무",
+    "지구는 둥그니까",
+    "전력 질주",
+    "이사",
+  ];
+
+  function summarizeCards(cards, div) {
+    const arr = Array(11).fill(0);
+    for (card of cards)
+      arr[card] += 1;
+    for (let i = 0; i < 11; i++) {
+      if (arr[i] > 0) {
+        const p = document.createElement("p");
+        p.innerText = `${cardNames[i]}: ${arr[i]}장`;
+        div.appendChild(p);
+      }
+    }
+  }
+
   function draw() {
     const message = messages[cursor];
     chessboard.style.width = `${8 * size}px`;
@@ -161,6 +188,8 @@ document.addEventListener("DOMContentLoaded", () => {
     resultText.innerText = "";
     titleText.innerText = "";
     descText.innerText = "";
+    myText.innerHTML = "";
+    opText.innerHTML = "";
 
     if (message) {
       for (let rank = 0; rank < 8; rank++) {
@@ -189,71 +218,78 @@ document.addEventListener("DOMContentLoaded", () => {
         addOverlay(255, 0, 0, 0.2, message.check.file, message.check.rank);
       }
 
-      if (message.my_cards) {
-        myText.innerText = message.my_cards.toString();
-      }
+      if (message.my_cards)
+        summarizeCards(message.my_cards, myText);
 
-      if (message.opponent_cards) {
-        opText.innerText = message.opponent_cards.toString();
-      }
+      if (message.opponent_cards)
+        summarizeCards(message.opponent_cards, opText);
 
-      if (message.last_event) {
-        if (message.last_event.Swap) {
-          const ev = message.last_event.Swap;
-          for (const e of ev) addOverlay(0, 0, 255, 0.2, e.file, e.rank);
-          titleText.innerText = "교대";
-          descText.innerText = "두 기물의 위치가 바뀌었습니다.";
-        } else if (message.last_event.KnightToBishop) {
-          const ev = message.last_event.KnightToBishop;
-          addOverlay(0, 0, 255, 0.2, ev.file, ev.rank);
-          titleText.innerText = "말에서 내리기";
-          descText.innerText = "나이트가 비숍이 되었습니다.";
-        } else if (message.last_event.BishopToKnight) {
-          const ev = message.last_event.BishopToKnight;
-          addOverlay(0, 0, 255, 0.2, ev.file, ev.rank);
-          titleText.innerText = "말에 타기";
-          descText.innerText = "비숍이 나이트가 되었습니다.";
-        } else if (message.last_event.RooksToQueen) {
-          const ev = message.last_event.RooksToQueen;
-          for (const e of ev) addOverlay(0, 0, 255, 0.2, e.file, e.rank);
-          titleText.innerText = "융합";
-          descText.innerText = "룩 두 개가 퀸이 되었습니다.";
-        } else if (message.last_event.QueenToRooks) {
-          const ev = message.last_event.QueenToRooks;
-          for (const e of ev) addOverlay(0, 0, 255, 0.2, e.file, e.rank);
-          titleText.innerText = "분열";
-          descText.innerText = "퀸이 룩 두 개가 되었습니다.";
-        } else if (message.last_event.PawnRun) {
-          const ev = message.last_event.PawnRun;
-          for (const e of ev) addOverlay(0, 0, 255, 0.2, e.file, e.rank);
-          titleText.innerText = "전력질주";
-          descText.innerText = "폰이 앞으로 달려갔습니다.";
-        } else if (message.last_event.PawnsToQueen) {
-          const ev = message.last_event.PawnsToQueen;
-          for (const e of ev) addOverlay(0, 0, 255, 0.2, e.file, e.rank);
-          titleText.innerText = "합체";
-          descText.innerText = "폰 여덟 개가 퀸이 되었습니다.";
-        } else if (message.last_event.QueenToPawns) {
-          const ev = message.last_event.QueenToPawns;
-          addOverlay(0, 0, 255, 0.2, ev[0].file, ev[0].rank);
-          const rank = ev[1];
-          for (let file = 0; file < 8; file++) {
-            const pos = { file, rank };
-            if (!samePos(ev[0], pos))
-              addOverlay(0, 0, 255, 0.2, file, rank);
+      if (message.state === "Normal") {
+        if (message.last_event) {
+          if (message.last_event.Swap) {
+            const ev = message.last_event.Swap;
+            for (const e of ev) addOverlay(0, 0, 255, 0.2, e.file, e.rank);
+            titleText.innerText = cardNames[7];
+            descText.innerText = "두 기물의 위치가 바뀌었습니다.";
+          } else if (message.last_event.KnightToBishop) {
+            const ev = message.last_event.KnightToBishop;
+            addOverlay(0, 0, 255, 0.2, ev.file, ev.rank);
+            titleText.innerText = cardNames[2];
+            descText.innerText = "나이트가 비숍이 되었습니다.";
+          } else if (message.last_event.BishopToKnight) {
+            const ev = message.last_event.BishopToKnight;
+            addOverlay(0, 0, 255, 0.2, ev.file, ev.rank);
+            titleText.innerText = cardNames[1];
+            descText.innerText = "비숍이 나이트가 되었습니다.";
+          } else if (message.last_event.RooksToQueen) {
+            const ev = message.last_event.RooksToQueen;
+            for (const e of ev) addOverlay(0, 0, 255, 0.2, e.file, e.rank);
+            titleText.innerText = cardNames[3];
+            descText.innerText = "룩 두 개가 퀸이 되었습니다.";
+          } else if (message.last_event.QueenToRooks) {
+            const ev = message.last_event.QueenToRooks;
+            for (const e of ev) addOverlay(0, 0, 255, 0.2, e.file, e.rank);
+            titleText.innerText = cardNames[4];
+            descText.innerText = "퀸이 룩 두 개가 되었습니다.";
+          } else if (message.last_event.PawnRun) {
+            const ev = message.last_event.PawnRun;
+            for (const e of ev) addOverlay(0, 0, 255, 0.2, e.file, e.rank);
+            titleText.innerText = cardNames[9];
+            descText.innerText = "폰이 앞으로 달려갔습니다.";
+          } else if (message.last_event.PawnsToQueen) {
+            const ev = message.last_event.PawnsToQueen;
+            for (const e of ev) addOverlay(0, 0, 255, 0.2, e.file, e.rank);
+            titleText.innerText = cardNames[5];
+            descText.innerText = "폰 여덟 개가 퀸이 되었습니다.";
+          } else if (message.last_event.QueenToPawns) {
+            const ev = message.last_event.QueenToPawns;
+            addOverlay(0, 0, 255, 0.2, ev[0].file, ev[0].rank);
+            const rank = ev[1];
+            for (let file = 0; file < 8; file++) {
+              const pos = { file, rank };
+              if (!samePos(ev[0], pos))
+                addOverlay(0, 0, 255, 0.2, file, rank);
+            }
+            titleText.innerText = cardNames[6];
+            descText.innerText = "퀸이 폰 여덟 개가 되었습니다.";
+          } else if (message.last_event.Rotate) {
+            const ev = message.last_event.Rotate;
+            for (const e of ev) addOverlay(0, 0, 255, 0.2, e.file, e.rank);
+            titleText.innerText = cardNames[8];
+            descText.innerText = "기물이 체스판 반대편으로 건너갔습니다.";
+          } else if (message.last_event.KingMove) {
+            const ev = message.last_event.KingMove;
+            for (const e of ev) addOverlay(0, 0, 255, 0.2, e.file, e.rank);
+            titleText.innerText = cardNames[10];
+            descText.innerText = "킹이 반대편으로 걸어갔습니다.";
           }
-          titleText.innerText = "산산조각";
-          descText.innerText = "퀸이 폰 여덟 개가 되었습니다.";
-        } else if (message.last_event.Rotate) {
-          const ev = message.last_event.Rotate;
-          for (const e of ev) addOverlay(0, 0, 255, 0.2, e.file, e.rank);
-          titleText.innerText = "지구는 둥그니까";
-          descText.innerText = "기물이 체스판 반대편으로 건너갔습니다.";
-        } else if (message.last_event.KingMove) {
-          const ev = message.last_event.KingMove;
-          for (const e of ev) addOverlay(0, 0, 255, 0.2, e.file, e.rank);
-          titleText.innerText = "이사";
-          descText.innerText = "킹이 반대편으로 걸어갔습니다.";
+        } else if (message.last_card !== null) {
+          if (message.last_card === 0) {
+            titleText.innerText = cardNames[0];
+          } else {
+            titleText.innerText = "발동 실패";
+            descText.innerText = cardNames[message.last_card];
+          }
         }
       }
     }

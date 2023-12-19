@@ -18,6 +18,7 @@ pub struct Message {
     state: GameState,
     last: Option<Move>,
     last_event: Option<Event>,
+    last_card: Option<usize>,
     check: Option<Location>,
     role: Role,
     half_moves: usize,
@@ -60,6 +61,7 @@ impl Server {
         let state = self.board.game_state(&moves);
         let last = self.board.last_move.clone();
         let last_event = self.board.last_event;
+        let last_card = self.board.last_card;
         let check = self.board.get_check();
         let half_moves = self.board.half_moves;
         for (id, addr) in &self.sessions {
@@ -88,6 +90,7 @@ impl Server {
                 state,
                 last: last.clone(),
                 last_event,
+                last_card,
                 check,
                 role,
                 half_moves,
@@ -142,10 +145,7 @@ impl Handler<Request> for Server {
             Request::Move(mv) => {
                 self.board.move_piece(&mv);
                 if !self.board.is_game_over() {
-                    let ev = self.board.draw_card();
-                    if let Some(ev) = ev {
-                        self.board.apply_event(ev);
-                    }
+                    self.board.draw_card();
                 }
                 self.send_state();
             }
